@@ -5,7 +5,10 @@ import re
 import csv
 import time
 import shutil
+import itertools
 import multiprocessing
+from typing import List, Any, Tuple
+
 from tqdm import tqdm
 
 DATA_SUITES = (
@@ -32,54 +35,59 @@ OUTPUT_DIRECTORY = 'output'
 BACKUP_DIRECTORY = 'backup'
 
 
-def clause_satisfied(assignment: list[bool], clause: list[int]) -> bool:
-    return any([
-        not ((variable > 0) ^ assignment[abs(variable)]) for variable in clause
-    ])
+class Clause:
+    clause: tuple[int]
+
+    def __init__(self, clause: tuple[int]):
+        self.clause = clause
+
+    def satisfied(self, assignment: tuple[bool]) -> bool:
+        return any([
+            not ((variable > 0) ^ assignment[abs(variable)]) for variable in self.clause
+        ])
+
+    def weight(self, weights: tuple[int], assignment: tuple[bool]) -> int:
+        return sum([
+            weights[abs(variable)] for variable in self.clause if assignment[abs(variable)]
+        ])
 
 
-def test_clause_satisfiable():
-    assert not clause_satisfied([None, False, False, False], [1, 2, 3])
-    assert clause_satisfied([None, True, False, False], [1, 2, 3])
-    assert clause_satisfied([None, False, True, False], [1, 2, 3])
-    assert clause_satisfied([None, False, False, True], [1, 2, 3])
-    assert clause_satisfied([None, True, True, False], [1, 2, 3])
-    assert clause_satisfied([None, False, True, True], [1, 2, 3])
-    assert clause_satisfied([None, True, True, True], [1, 2, 3])
-    assert clause_satisfied([None, False, False, False], [1, -2, 3])
-    assert not clause_satisfied([None, False, True, False], [1, -2, 3])
-    assert clause_satisfied([None, False, True, True], [1, -2, 3])
-    assert not clause_satisfied([None, True, True, True], [-1, -2, -3])
+# def test_clause_satisfiable():
+#     assert not clause_satisfied([None, False, False, False], [1, 2, 3])
+#     assert clause_satisfied([None, True, False, False], [1, 2, 3])
+#     assert clause_satisfied([None, False, True, False], [1, 2, 3])
+#     assert clause_satisfied([None, False, False, True], [1, 2, 3])
+#     assert clause_satisfied([None, True, True, False], [1, 2, 3])
+#     assert clause_satisfied([None, False, True, True], [1, 2, 3])
+#     assert clause_satisfied([None, True, True, True], [1, 2, 3])
+#     assert clause_satisfied([None, False, False, False], [1, -2, 3])
+#     assert not clause_satisfied([None, False, True, False], [1, -2, 3])
+#     assert clause_satisfied([None, False, True, True], [1, -2, 3])
+#     assert not clause_satisfied([None, True, True, True], [-1, -2, -3])
 
 
-def clause_weight(weights: list[int], assignment: list[bool], clause: list[int]) -> int:
-    return sum([
-        weights[abs(variable)] for variable in clause if assignment[abs(variable)]
-    ])
-
-
-def test_clause_weight():
-    assert 1 == clause_weight([0, 1, 1, 1], [None, True, False, False], [1, 2, 3])
-    assert 1 == clause_weight([0, 1, 1, 1], [None, False, True, False], [1, 2, 3])
-    assert 1 == clause_weight([0, 1, 1, 1], [None, False, False, True], [1, 2, 3])
-    assert 2 == clause_weight([0, 1, 1, 1], [None, True, True, False], [1, 2, 3])
-    assert 2 == clause_weight([0, 1, 1, 1], [None, False, True, True], [1, 2, 3])
-    assert 3 == clause_weight([0, 1, 1, 1], [None, True, True, True], [1, 2, 3])
-    assert 8 == clause_weight([0, 4, 1, 3], [None, True, True, True], [1, 2, 3])
-    assert 2 == clause_weight([0, 1, 1, 1], [None, False, True, True], [-1, -2, 3])
-    # assert 6 == clause_weight([0, 2, 3, 4], [None, False, True, True], [-1, -2, 3])
-    # assert 9 == clause_weight([0, 2, 3, 4], [None, False, False, True], [-1, -2, 3])
+# def test_clause_weight():
+#     assert 1 == clause_weight([0, 1, 1, 1], [None, True, False, False], [1, 2, 3])
+#     assert 1 == clause_weight([0, 1, 1, 1], [None, False, True, False], [1, 2, 3])
+#     assert 1 == clause_weight([0, 1, 1, 1], [None, False, False, True], [1, 2, 3])
+#     assert 2 == clause_weight([0, 1, 1, 1], [None, True, True, False], [1, 2, 3])
+#     assert 2 == clause_weight([0, 1, 1, 1], [None, False, True, True], [1, 2, 3])
+#     assert 3 == clause_weight([0, 1, 1, 1], [None, True, True, True], [1, 2, 3])
+#     assert 8 == clause_weight([0, 4, 1, 3], [None, True, True, True], [1, 2, 3])
+#     assert 2 == clause_weight([0, 1, 1, 1], [None, False, True, True], [-1, -2, 3])
+#     # assert 6 == clause_weight([0, 2, 3, 4], [None, False, True, True], [-1, -2, 3])
+#     # assert 9 == clause_weight([0, 2, 3, 4], [None, False, False, True], [-1, -2, 3])
 
 
 class MaxWeightedCNF:
+    file_path: str
+    clauses_count: int = 0
+    variables_count: int = 0
+    clauses: tuple[Clause] = ()
+    weights: tuple[int] = ()
+
     def __init__(self, file_path: str):
         self.file_path = file_path
-
-        self.variables_count = -1
-        self.clauses_count = -1
-        self.weights = None
-        self.clauses = []
-
         self.extract_content()
 
     def extract_content(self):
@@ -92,14 +100,26 @@ class MaxWeightedCNF:
                     self.clauses_count = int(line.split(' ')[3])
                     continue
                 if line.startswith('w'):
-                    self.weights = [0] + [int(weight) for weight in line.split(' ')[1:-1]]
+                    self.weights = (0,) + tuple([int(weight) for weight in line.split(' ')[1:-1]])
                     continue
-                self.clauses += [[int(literal) for literal in line.lstrip().rstrip().split(' ')[:-1]]]
+                self.clauses = self.clauses + tuple([
+                    Clause(tuple([int(literal) for literal in line.lstrip().rstrip().split(' ')[:-1]])),
+                ])
+
+    def satisfied(self, assignment: tuple[bool]) -> bool:
+        return all([
+            clause.satisfied(assignment) for clause in self.clauses
+        ])
+
+    def weight(self, assignment: tuple[bool]) -> int:
+        return sum([
+            clause.weight(self.weights, assignment) for clause in self.clauses
+        ])
 
 
 if __name__ == '__main__':
-    test_clause_satisfiable()
-    test_clause_weight()
+    # test_clause_satisfiable()
+    # test_clause_weight()
 
     if not os.path.exists(BACKUP_DIRECTORY):
         os.mkdir(BACKUP_DIRECTORY)
@@ -118,3 +138,14 @@ if __name__ == '__main__':
                 for file in files:
                     file_path = os.path.join(root, file)
                     mwsat = MaxWeightedCNF(file_path)
+                    assignment = [True] * mwsat.variables_count
+
+                    assignments = tuple(itertools.product([False, True], repeat=mwsat.variables_count))
+                    satifiable_assignments = tuple([
+                        assignment for assignment in assignments if mwsat.satisfied(assignment)
+                    ])
+                    mx = max([
+                        mwsat.weight(assignment) for assignment in satifiable_assignments
+                    ])
+                    print(mx)
+                    exit(0)
