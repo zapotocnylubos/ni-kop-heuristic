@@ -74,7 +74,7 @@ class SimulatedAnnealing:
                 new_objective = self.objective_function(new_solution)
                 delta = new_objective - best_objective
 
-                if delta > 0 or self.probability(delta, temperature) > random.uniform(0, 1):
+                if delta > 0:  #or self.probability(delta, temperature) > random.uniform(0, 1):
                     current_solution = new_solution
                     current_objective = new_objective
 
