@@ -1,16 +1,15 @@
-import os
 import csv
-import time
-import shutil
 import multiprocessing
+import os
 import random
+import shutil
+import time
 from typing import Dict
 
 import numpy as np
+from tqdm import tqdm
 
 np.seterr(over='ignore')
-
-from tqdm import tqdm
 
 DATA_SUITES = (
     'wuf20-71',
@@ -35,6 +34,7 @@ DATA_DIRECTORY = 'data'
 OUTPUT_DIRECTORY = 'output'
 BACKUP_DIRECTORY = 'backup'
 
+DEBUG = True
 RUNS = 1
 
 
@@ -151,40 +151,42 @@ class SimulatedAnnealing:
     @staticmethod
     def objective_function(mwcnf: MaxWeightedCNF, assignment: tuple[bool]):
         return sum([
-            mwcnf.weights[variable] if variable else -100000 for variable in assignment
+            mwcnf.weights[variable] for variable in assignment if variable
         ])
 
     def perturb_solution(self, assignment: tuple[bool]) -> tuple[bool]:
         assignment = list(assignment)
-        for i in range(self.perturbation_flips):
+        for _ in range(self.perturbation_flips):
             variable = random.randint(0, len(assignment) - 1)
             assignment[variable] = not assignment[variable]
         return tuple(assignment)
 
     @staticmethod
     def probability(delta: int, temperature: int):
-        with np.errstate(divide='ignore'):
-            return np.exp(-delta / temperature)
+        return np.exp(-delta / temperature)
 
     def cool_temperature(self, temperature: int):
         return self.cooling_factor * temperature
 
-    def run(self, mwcnf: MaxWeightedCNF):
+    def run(self, mwcnf: MaxWeightedCNF, record_history=False):
         current_solution = self.random_assignment(mwcnf)
-
-        # walk in the state space only for satisfiable assignments
-        # while not mwcnf.satisfied(current_solution):
-        #     current_solution = self.random_assignment(mwcnf)
-
         current_objective = self.objective_function(mwcnf, current_solution)
+        current_objective_history = []
+
+        if record_history:
+            current_objective_history.append(current_objective)
 
         best_solution = current_solution
         best_objective = current_objective
+        best_objective_history = []
+
+        if record_history:
+            best_objective_history.append(best_objective)
 
         temperature = self.initial_temperature
 
         while temperature > self.final_temperature:
-            for i in range(self.num_iterations_per_temperature):
+            for _ in range(self.num_iterations_per_temperature):
                 new_solution = self.perturb_solution(current_solution)
 
                 new_objective = self.objective_function(mwcnf, new_solution)
@@ -194,13 +196,27 @@ class SimulatedAnnealing:
                     current_solution = new_solution
                     current_objective = new_objective
 
+                    if record_history:
+                        current_objective_history.append(current_objective)
+
                     if current_objective > best_objective:
                         best_solution = current_solution
                         best_objective = current_objective
 
+                        if record_history:
+                            best_objective_history.append(best_objective)
+
             temperature = self.cool_temperature(temperature)
 
-        return mwcnf.file_path, mwcnf.weight(best_solution), mwcnf.satisfied_clauses(best_solution), mwcnf.clauses_count
+        return \
+            mwcnf.file_path, \
+            mwcnf.weight(best_solution), \
+            mwcnf.satisfied_clauses(best_solution), \
+            mwcnf.clauses_count, \
+            len([variable for variable in best_solution if variable]), \
+            mwcnf.variables_count, \
+            current_objective_history, \
+            best_objective_history
 
 
 def run_sa(mwcnf: MaxWeightedCNF):
@@ -218,14 +234,16 @@ if __name__ == '__main__':
     os.mkdir(OUTPUT_DIRECTORY)
 
     for suite in DATA_SUITES:
+        os.mkdir(os.path.join(OUTPUT_DIRECTORY, suite))
+
         for suite_variation in DATA_SUITES_VARIATIONS:
             print(suite, suite_variation)
 
-            os.mkdir(os.path.join(OUTPUT_DIRECTORY, suite))
             os.mkdir(os.path.join(OUTPUT_DIRECTORY, suite, suite_variation))
             sa_output = open(os.path.join(OUTPUT_DIRECTORY, suite, suite_variation, 'sa.csv'), 'w')
 
-            sa_heading = ['instance', 'weight', 'satisfied_clauses', 'clauses']
+            sa_heading = ['instance', 'weight', 'satisfied_clauses', 'clauses',
+                          'true_variables', 'variables', 'current_objective_history', 'best_objective_history']
             sa_writer = csv.writer(sa_output)
 
             sa_writer.writerow(sa_heading)
@@ -238,12 +256,16 @@ if __name__ == '__main__':
 
             for root, _, files in os.walk(os.path.join(DATA_DIRECTORY, suite, f'{suite}-{suite_variation}')):
                 run_mwcnfs = flatten([[MaxWeightedCNF(os.path.join(root, file))] * RUNS for file in files])
-                pool = multiprocessing.Pool(processes=1)
+                if DEBUG:
+                    run_mwcnfs = [run_mwcnfs[0]]
+                pool = multiprocessing.Pool(processes=8)
 
                 sa_results = list(
                     tqdm(pool.imap(run_sa, run_mwcnfs), total=len(run_mwcnfs)))
 
-                sa_results = [(result[0].split('/')[-1], result[1], result[2], result[3]) for result in sa_results]
+                sa_results = [(result[0].split('/')[-1],
+                               result[1], result[2], result[3], result[4],
+                               result[5], result[6], result[7]) for result in sa_results]
 
                 sa_results.sort(key=lambda result: result[0])
 
