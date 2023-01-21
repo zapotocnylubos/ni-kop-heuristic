@@ -144,10 +144,12 @@ class SimulatedAnnealing:
         self.perturbation_flips = perturbation_flips
         self.cooling_factor = cooling_factor
 
-    def random_assignment(self, mwcnf: MaxWeightedCNF) -> tuple[bool]:
+    @staticmethod
+    def random_assignment(mwcnf: MaxWeightedCNF) -> tuple[bool]:
         return tuple(random.choices([True, False], k=mwcnf.variables_count))
 
-    def objective_function(self, mwcnf: MaxWeightedCNF, assignment: tuple[bool]):
+    @staticmethod
+    def objective_function(mwcnf: MaxWeightedCNF, assignment: tuple[bool]):
         return sum([
             mwcnf.weights[variable] if variable else -100000 for variable in assignment
         ])
@@ -159,7 +161,8 @@ class SimulatedAnnealing:
             assignment[variable] = not assignment[variable]
         return tuple(assignment)
 
-    def probability(self, delta: int, temperature: int):
+    @staticmethod
+    def probability(delta: int, temperature: int):
         with np.errstate(divide='ignore'):
             return np.exp(-delta / temperature)
 
