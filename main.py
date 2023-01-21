@@ -5,9 +5,11 @@ import re
 import csv
 import time
 import shutil
+import math
 import itertools
 import multiprocessing
-from typing import List, Any, Tuple
+import random
+import numpy as np
 
 from tqdm import tqdm
 
@@ -36,55 +38,23 @@ BACKUP_DIRECTORY = 'backup'
 
 
 class Clause:
-    clause: tuple[int]
+    clause: list[int]
 
-    def __init__(self, clause: tuple[int]):
+    def __init__(self, clause: list[int]):
         self.clause = clause
 
-    def satisfied(self, assignment: tuple[bool]) -> bool:
+    def satisfied(self, assignment: list[bool]) -> bool:
         return any([
-            not ((variable > 0) ^ assignment[abs(variable)]) for variable in self.clause
+            not ((literal > 0) ^ assignment[abs(literal)]) for literal in self.clause
         ])
-
-    def weight(self, weights: tuple[int], assignment: tuple[bool]) -> int:
-        return sum([
-            weights[abs(variable)] for variable in self.clause if assignment[abs(variable)]
-        ])
-
-
-# def test_clause_satisfiable():
-#     assert not clause_satisfied([None, False, False, False], [1, 2, 3])
-#     assert clause_satisfied([None, True, False, False], [1, 2, 3])
-#     assert clause_satisfied([None, False, True, False], [1, 2, 3])
-#     assert clause_satisfied([None, False, False, True], [1, 2, 3])
-#     assert clause_satisfied([None, True, True, False], [1, 2, 3])
-#     assert clause_satisfied([None, False, True, True], [1, 2, 3])
-#     assert clause_satisfied([None, True, True, True], [1, 2, 3])
-#     assert clause_satisfied([None, False, False, False], [1, -2, 3])
-#     assert not clause_satisfied([None, False, True, False], [1, -2, 3])
-#     assert clause_satisfied([None, False, True, True], [1, -2, 3])
-#     assert not clause_satisfied([None, True, True, True], [-1, -2, -3])
-
-
-# def test_clause_weight():
-#     assert 1 == clause_weight([0, 1, 1, 1], [None, True, False, False], [1, 2, 3])
-#     assert 1 == clause_weight([0, 1, 1, 1], [None, False, True, False], [1, 2, 3])
-#     assert 1 == clause_weight([0, 1, 1, 1], [None, False, False, True], [1, 2, 3])
-#     assert 2 == clause_weight([0, 1, 1, 1], [None, True, True, False], [1, 2, 3])
-#     assert 2 == clause_weight([0, 1, 1, 1], [None, False, True, True], [1, 2, 3])
-#     assert 3 == clause_weight([0, 1, 1, 1], [None, True, True, True], [1, 2, 3])
-#     assert 8 == clause_weight([0, 4, 1, 3], [None, True, True, True], [1, 2, 3])
-#     assert 2 == clause_weight([0, 1, 1, 1], [None, False, True, True], [-1, -2, 3])
-#     # assert 6 == clause_weight([0, 2, 3, 4], [None, False, True, True], [-1, -2, 3])
-#     # assert 9 == clause_weight([0, 2, 3, 4], [None, False, False, True], [-1, -2, 3])
 
 
 class MaxWeightedCNF:
     file_path: str
     clauses_count: int = 0
     variables_count: int = 0
-    clauses: tuple[Clause] = ()
-    weights: tuple[int] = ()
+    clauses: list[Clause] = []
+    weights: list[int] = []
 
     def __init__(self, file_path: str):
         self.file_path = file_path
@@ -96,31 +66,85 @@ class MaxWeightedCNF:
                 if line.startswith('c'):
                     continue
                 if line.startswith('p'):
-                    self.variables_count = int(line.split(' ')[2]) + 1
+                    self.variables_count = int(line.split(' ')[2]) + 1  # +1 for x0 (unused)
                     self.clauses_count = int(line.split(' ')[3])
                     continue
                 if line.startswith('w'):
-                    self.weights = (0,) + tuple([int(weight) for weight in line.split(' ')[1:-1]])
+                    self.weights = [0] + [int(weight) for weight in line.split(' ')[1:-1]]
                     continue
-                self.clauses = self.clauses + tuple([
-                    Clause(tuple([int(literal) for literal in line.lstrip().rstrip().split(' ')[:-1]])),
-                ])
+                self.clauses.append(
+                    Clause([int(literal) for literal in line.lstrip().rstrip().split(' ')[:-1]])
+                )
 
-    def satisfied(self, assignment: tuple[bool]) -> bool:
+    def satisfied(self, assignment: list[bool]) -> bool:
         return all([
             clause.satisfied(assignment) for clause in self.clauses
         ])
 
-    def weight(self, assignment: tuple[bool]) -> int:
+    def weight(self, assignment: list[bool]) -> int:
+        if len(assignment) != self.variables_count:
+            raise ValueError(f'Invalid count of assignment variables ({len(assignment)} != {self.variables_count})')
+
         return sum([
-            clause.weight(self.weights, assignment) for clause in self.clauses
+            self.weights[index] for index, value in enumerate(assignment) if value
         ])
 
 
-if __name__ == '__main__':
-    # test_clause_satisfiable()
-    # test_clause_weight()
+class SimulatedAnnealing:
+    initial_temperature: int
+    final_temperature: int
+    num_iterations_per_temperature: int
+    cooling_factor: float
 
+    def __init__(self,
+                 initial_temperature: int = 1000,
+                 final_temperature: int = 1,
+                 num_iterations_per_temperature: int = 10,
+                 cooling_factor: float = .995):
+
+        self.initial_temperature = initial_temperature
+        self.final_temperature = final_temperature
+        self.num_iterations_per_temperature = num_iterations_per_temperature
+        self.cooling_factor = cooling_factor
+
+    def random_assignment(self, mwcnf: MaxWeightedCNF):
+        return random.choices([True, False], k=mwcnf.variables_count)
+
+    def perturb_solution(self, assignment: list[bool]):
+        random_index = random.randint(0, len(assignment) - 1)
+        assignment[random_index] = not assignment[random_index]
+        return assignment
+
+    def probability(self, delta: int, temperature: int):
+        return np.exp(-delta / temperature)
+
+    def cool_temperature(self, temperature: int):
+        return self.cooling_factor * temperature
+
+    def run(self, mwcnf: MaxWeightedCNF):
+        current_solution = self.random_assignment(mwcnf)
+        current_weight = mwcnf.weight(current_solution)
+        best_solution = current_solution
+        best_weight = current_weight
+        temperature = self.initial_temperature
+
+        while temperature > self.final_temperature:
+            for i in range(self.num_iterations_per_temperature):
+                new_solution = self.perturb_solution(current_solution)
+                new_weight = mwcnf.weight(new_solution)
+                delta = new_weight - current_weight
+                if delta > 0 or self.probability(delta, temperature) > random.uniform(0, 1):
+                    current_solution = new_solution
+                    current_weight = new_weight
+                    if current_weight > best_weight:
+                        best_solution = current_solution
+                        best_weight = current_weight
+            temperature = self.cool_temperature(temperature)
+
+        return best_solution
+
+
+if __name__ == '__main__':
     if not os.path.exists(BACKUP_DIRECTORY):
         os.mkdir(BACKUP_DIRECTORY)
     BACKUP_TIMESTAMP = time.time().__str__()
@@ -137,15 +161,11 @@ if __name__ == '__main__':
             for root, _, files in os.walk(os.path.join(DATA_DIRECTORY, suite, f'{suite}-{suite_variation}')):
                 for file in files:
                     file_path = os.path.join(root, file)
-                    mwsat = MaxWeightedCNF(file_path)
-                    assignment = [True] * mwsat.variables_count
+                    mwcnf = MaxWeightedCNF(file_path)
 
-                    assignments = tuple(itertools.product([False, True], repeat=mwsat.variables_count))
-                    satifiable_assignments = tuple([
-                        assignment for assignment in assignments if mwsat.satisfied(assignment)
-                    ])
-                    mx = max([
-                        mwsat.weight(assignment) for assignment in satifiable_assignments
-                    ])
+                    sa = SimulatedAnnealing()
+                    solution = sa.run(mwcnf)
+                    mx = mwcnf.weight(solution)
+
                     print(mx)
                     exit(0)
