@@ -1,5 +1,5 @@
 import random
-import numpy as np
+import math
 
 from .max_weighted_cnf import MaxWeightedCNF
 
@@ -43,14 +43,15 @@ class SimulatedAnnealing:
 
     @staticmethod
     def probability(delta: int, temperature: int):
-        return np.exp(-delta / temperature)
+        exponent = -delta / temperature
+        if exponent > 1:
+            return 1
+        return math.exp(exponent)
 
     def cool_temperature(self, temperature: int):
         return self.cooling_factor * temperature
 
     def run(self, record_history=False):
-        np.seterr(over='ignore')
-
         current_solution = self.random_assignment()
         current_objective = self.objective_function(current_solution)
         current_objective_history = []
@@ -67,14 +68,21 @@ class SimulatedAnnealing:
 
         temperature = self.initial_temperature
 
+        cnt = 0
         while temperature > self.final_temperature:
             for _ in range(self.num_iterations_per_temperature):
                 new_solution = self.perturb_solution(current_solution)
 
                 new_objective = self.objective_function(new_solution)
-                delta = new_objective - best_objective
+                delta = new_objective - current_objective
 
-                if delta > 0:  #or self.probability(delta, temperature) > random.uniform(0, 1):
+                a = self.probability(abs(delta), temperature)
+                b = random.uniform(0, 1)
+
+                if a > b and not (delta > 0):
+                    cnt = cnt + 1
+
+                if delta > 0 or a > b:
                     current_solution = new_solution
                     current_objective = new_objective
 
