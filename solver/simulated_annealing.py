@@ -68,7 +68,6 @@ class SimulatedAnnealing:
 
         temperature = self.initial_temperature
 
-        cnt = 0
         while temperature > self.final_temperature:
             for _ in range(self.num_iterations_per_temperature):
                 new_solution = self.perturb_solution(current_solution)
@@ -76,25 +75,17 @@ class SimulatedAnnealing:
                 new_objective = self.objective_function(new_solution)
                 delta = new_objective - current_objective
 
-                a = self.probability(abs(delta), temperature)
-                b = random.uniform(0, 1)
-
-                if a > b and not (delta > 0):
-                    cnt = cnt + 1
-
-                if delta > 0 or a > b:
+                if delta > 0 or self.probability(abs(delta), temperature) > random.uniform(0, 1):
                     current_solution = new_solution
                     current_objective = new_objective
-
-                    if record_history:
-                        current_objective_history.append(current_objective)
 
                     if current_objective > best_objective:
                         best_solution = current_solution
                         best_objective = current_objective
 
-                        if record_history:
-                            best_objective_history.append(best_objective)
+                if record_history:
+                    current_objective_history.append(current_objective)
+                    best_objective_history.append(best_objective)
 
             temperature = self.cool_temperature(temperature)
 
