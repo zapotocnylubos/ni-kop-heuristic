@@ -32,7 +32,7 @@ class SimulatedAnnealing:
     def objective_function(self, assignment: tuple[bool]):
         return sum([
             self.mwcnf.weights[index] for index, variable in enumerate(assignment) if variable
-        ])
+        ]) - (self.mwcnf.unsatisfied_clauses(assignment) * 1000)
 
     def perturb_solution(self, assignment: tuple[bool]) -> tuple[bool]:
         assignment = list(assignment)
