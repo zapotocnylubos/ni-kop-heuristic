@@ -11,28 +11,39 @@ class SimulatedAnnealing:
     num_iterations_per_temperature: int
     perturbation_flips: int
     cooling_factor: float
+    penalty: int
 
     def __init__(self,
                  mwcnf: MaxWeightedCNF,
                  initial_temperature: int = 5000,
                  final_temperature: int = 1,
                  num_iterations_per_temperature: int = 10,
-                 perturbation_flips: int = 1,
-                 cooling_factor: float = .995):
+                 perturbation_flips: int = 2,
+                 cooling_factor: float = .985,
+                 penalty: int = -5000):
         self.mwcnf = mwcnf
         self.initial_temperature = initial_temperature
         self.final_temperature = final_temperature
         self.num_iterations_per_temperature = num_iterations_per_temperature
         self.perturbation_flips = perturbation_flips
         self.cooling_factor = cooling_factor
+        self.penalty = penalty
+
+        if not penalty:
+            self.penalty = int(sum(self.mwcnf.weights) / len(self.mwcnf.weights))
 
     def random_assignment(self) -> tuple[bool]:
         return tuple(random.choices([True, False], k=self.mwcnf.variables_count))
 
     def objective_function(self, assignment: tuple[bool]):
+        unsatisfied_clauses = self.mwcnf.unsatisfied_clauses(assignment)
+
+        penalization = (1 - (unsatisfied_clauses / self.mwcnf.clauses_count)) * (unsatisfied_clauses * self.penalty)
+        penalization *= self.mwcnf.variables_count / 8
+
         return sum([
             self.mwcnf.weights[index] for index, variable in enumerate(assignment) if variable
-        ]) - (self.mwcnf.unsatisfied_clauses(assignment) * 1000)
+        ]) + penalization
 
     def perturb_solution(self, assignment: tuple[bool]) -> tuple[bool]:
         assignment = list(assignment)
