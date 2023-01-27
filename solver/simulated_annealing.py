@@ -29,8 +29,8 @@ class SimulatedAnnealing:
         self.cooling_factor = cooling_factor
         self.penalty = penalty
 
-        # if not penalty:
-        self.penalty = -int(sum(self.mwcnf.weights) / len(self.mwcnf.weights))
+        if not penalty:
+            self.penalty = -int(sum(self.mwcnf.weights) / len(self.mwcnf.weights))
 
     def random_assignment(self) -> tuple[bool]:
         return tuple(random.choices([True, False], k=self.mwcnf.variables_count))
