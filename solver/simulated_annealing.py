@@ -94,10 +94,6 @@ class SimulatedAnnealing:
                         best_solution = current_solution
                         best_objective = current_objective
 
-                if record_history:
-                    current_objective_history.append(current_objective)
-                    best_objective_history.append(best_objective)
-
             temperature = self.cool_temperature(temperature)
 
         return \

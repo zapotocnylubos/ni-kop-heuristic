@@ -142,236 +142,101 @@
     Při hledání ideálních parametrů heuristiky či efektivity algoritmu není uvažována efektivita jazyka jako takového.
     Všechny metriky jsou univerzálně přenositelné mezi různými hardwarovými platformami.
 
-    Hlavní část heuristiky je zobrazen na obrázku~\ref{fig:main-part} kde je vi
+    Hlavní část heuristiky je zobrazena na obrázku~\ref{fig:main-loop} kde lze nahlédnou, jak algoritmus pracuje.
 
     \begin{figure}
         \centering
-        \includegraphics[width=7cm]{images/generation}
-        \caption{Spuštění experimentu}
-        \label{fig:main-part}
+        \includegraphics[width=7cm]{images/main-loop}
+        \caption{Hlavní smyčka algoritmu}
+        \label{fig:main-loop}
     \end{figure}
 
-    V rámci experimentálního vyhodnocení úspěšnosti jednotlivých algoritmů byly algoritmy omezené na 500 možností převrácení hodnoty proměnné (flip).
-    Efektivita algoritmů byla testována na splnitelných instancích SAT formulí ze sad
+    Pravděpodobnost přijetí zhoršujícího řešení je závislá na rozdílu hodnot účelové funkce mezi aktuálním řešením a potenciálním novým řešením.
+    Zároveň je závislá na aktuální teplotě. Čím větší teplota, tím větší pravděpodobnost, že bude přijato zhoršující řešení.
+    Konkrétní implementaci lze vidět na obrázku~\ref{fig:probabilty}.
+    Výsledek tét funkce je následně v hlavním cyklu porovnán s náhodnou hodnotou v internalu od 0 do 1 a pokud tato hodnota
+    převyšuje vygenerovanou náhodnou hodnotu přijímáme zhrošující řešení.
+
+    Zlepšující řešení přijímáme vždy.
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=7cm]{images/probabilty}
+        \caption{Výpočet pravděpodobnosti přijetí zhoršujícího řešení}
+        \label{fig:probabilty}
+    \end{figure}
+
+    Průhod stavovým prostorem zajišťuje funkce \emph{perturb\_solution} (obrázek~\ref{fig:perturb}) která flipuje náhodné bity v aktuálním ohodnocení.
+    Tímto se můžeme dostat k méně optimálnímu řešení než které aktuálně máme, ale zajišťujeme si tím větší průchod
+    možných konfigurací a mitigujeme uváznutí v lokálních extrémech.
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=7cm]{images/perturb}
+        \caption{Perturbace ohodnocení proměnných}
+        \label{fig:perturb}
+    \end{figure}
+
+    Při implementaci a testování heuristy byly použity tyto testovací sady
 
     \begin{itemize}
-        \item uf20-71R
-        \item uf20-81R
-        \item uf20-91R
-        \item uf50-218R
-        \item uf75-325
-        \item ruf20-91R
-        \item ruf50-218R
-        \item ruf75-320R
-        \item 5uf20-420
-        \item 5uf50-1050
-        \item 7uf20-1760
+        \item wuf20-71
+        \item wuf20-71R
+        \item wuf20-91
+        \item wuf20-91R
+        \item wuf50-200
+        \item wuf50-219
+        \item wuf50-218R
+        \item wuf75-325
+        \item wuf100-430
     \end{itemize}
 
-    Podrobný popis datových sad lze najít na stránkách kurzu NI-KOP~ČVUT~FIT~\cite{coursesData}
+    Parametry heuristy jsou následující
 
-    Každá instance problému z datové sady byla spuštěna 1000 pro daný algoritmus, ale vždy s~jiným seedem pro pseudo náhodný generátor.
-    Ve výsledku byl každý algoritmus otestován na 100000 spuštěních pro každou datovou sadu.
-    Celkově se tedy pro získání experimentálních dat spustilo 2.2 milionu běhů algoritmu pro hledání splnitelného ohodnocení.
+    \begin{itemize}
+        \item \emph{initial\_temperature} - počáteční teplota
+        \item \emph{final\_temperature} - konečná teplota
+        \item \emph{num\_iterations\_per\_temperature} - počet iterací vnitřního cyklu ochlazování
+        \item \emph{perturbation\_flips} - počet náhodně vybraných bitů pro flipnutí při prohledávání stavového prostoru
+        \item \emph{cooling\_factor} - desetinné číslo (0, 1) reprezentující lineární funkci pro chlazení
+        \item \emph{penalty} - celočíselná (záporná) hodnota penalizující nesplněnou klauzi (\emph{None} pro aktivaci adaptivní penalizace)
+    \end{itemize}
+
+%------------------------------------------------
+
+    \section{White box testování}
+
+    Jeden z prvních testů celého program odhalil závažnou chybu v programu.
+    Chyba byla odhalena až po detailním výpisu grafu aktuálně nejlepších řešení heruistky.
+    Teorie simulovaného ochlazování říka, že se snižující teplotou by se mělo řešení ustálit a zlepšovat.
+    To na grafu zobrazeném na obrázku~\ref{fig:no-convergence} ale vůbec není patrné.
+
+    Daný problém spočíval ve výpočtu a použití hodnoty delta (na obrázku~\ref{fig:main-loop}).
+    Parametr delta se vypočítává odečtením hodnoty účelové funkce perturbovaného ohodnocení a hodnoty účelové funkce
+    aktuálního ohodnocení.
+    Následně je tato hodnota delta porovnána, zdali je větší než 0, což znamená zlepšení, v tom případě pertubované řešení
+    nahrazuje aktuální ohodnocení a cyklus pokračuje dále.
+
+    Problém nastával ale v~tom, že na parametru delta je také závislý výpočet pravděpodobnosti přijetí horšího řešení.
+    V tomto případě je nutné počítat s~hodnotou delta v~absolutní hodnotě.
+    Protože pro nízké teploty je tato delta velmi malá a zapříčinilo to přijetí mnoha zhoršujících řešení.
 
     \begin{figure}
         \centering
-        \includegraphics[width=7cm]{images/generation}
-        \caption{Spuštění experimentu}
-        \label{fig:generation}
+        \includegraphics[width=7cm]{images/no-convergence}
+        \caption{Simulované ochlazování bez konvergence}
+        \label{fig:no-convergence}
     \end{figure}
 
-    Obrázek~\ref{fig:generation} zobrazuje dokočení sběru experimentálních dat na datových sadách pro algortmus gSAT (první řádek)
-    a také probSAT (druhý řádek).
+%------------------------------------------------
 
-    Algoritmy následně byly porovnány na základě úspěšnosti, tedy zdali daný alogoritmus dokázal vygenerovat
-    splňující ohodnocení (splnitelné formule), a také na základě počtu iterací, než dané řešení dokázaly vygenerovat.
 
-    Zkoumán byl také poměr úspěšných a~neúspěšných běhů algoritmu a také prúměrný počet iterací nutný k zastavení programu.
-    Dále byl zkoumán průměrný počet iterací algoritmu pomocí váženého průměru,
-    kde neúspěšné běhy byly penalizovány maximálním počtem iterací v dané datové sadě.
-    Algorimy byly omezené na 500 iterací (flipů).
-
-    Následně byla zkoumána distribuční funkce počtu iterací v úspěšných bězích algoritmu a~vzájemné křížení
-    těchto distribučních funkcí mezi dvěma algoritmy.
-    Také byla zkoumána korigovaná distribuční funkce, která zohledňuje neúspešné běhy algoritmu.
-
-    Nakonec bylo zkoumáno, zdali se počet iterací úspěšných běhů řídí log-normálním statistickým rozložením.
+    \section{Black box testování}
 
 %------------------------------------------------
 
 
-    \section{Výsledky}
-
-
-    Tabulka~\ref{tab:success_ratio} zobrazuje procentuální úspěšnost jednotlivých algoritmů na instancích z příslušné datové sady.
-    Lze nahlédnout, že algoritmus probSAT byl na všech sadách úspěšnější (dokázal nalézt splnitelné ohodnocení proměnných).
-    Algoritmus probSAT průměrně nalezl splňujicí ohodnocení v $66.2\%$ případech, kdežto gSAT pouze v $59.2\%$, jedná se tedy o $7\%$ rozdíl.
-
-
-    \begin{table}
-        \caption{Úspěšnost běhů}
-        \centering
-        \begin{tabular}{llr}
-            \toprule
-            Datová sada & gSAT     & probSAT  \\
-            \midrule
-            uf20-71R    & $100\%$  & $100\%$  \\
-            uf20-81R    & $99.9\%$ & $100\%$  \\
-            uf20-91R    & $94.1\%$ & $98.2\%$ \\
-            uf50-218R   & $49.7\%$ & $63.7\%$ \\
-            uf75-325    & $27.4\%$ & $38.7\%$ \\
-            ruf20-91R   & $94.0\%$ & $97.8\%$ \\
-            ruf50-218R  & $51.7\%$ & $64.6\%$ \\
-            ruf75-320R  & $30.0\%$ & $42.5\%$ \\
-            5uf20-420   & $67.7\%$ & $79.5\%$ \\
-            5uf50-1050  & $4.6\%$  & $5.4\%$  \\
-            7uf20-1760  & $31.7\%$ & $37.6\%$ \\
-            \midrule
-            Průměr      & $59.2\%$ & $66.2\%$ \\
-            \bottomrule
-        \end{tabular}
-        \label{tab:success_ratio}
-    \end{table}
-
-    Tabulka~\ref{tab:average_iterations} zobrazuje průměrný počet iterací, které algoitmus provedl, než našel splňující
-    ohodnocení nebo byl po 500 iteracích zastaven a danou formuli nedokázal splnit.
-    Lze také pozorovat trend, že algoritmus probSAT potřeboval průměrně méně iterací pro nalezení řešení než gSAT\@.
-    Algoritmus gSAT potřeboval průměrně $270$ iteraci, než nalezl splňující ohodnocení, kdežto probSAT potřeboval pouze $245.6$.
-    ProbSAT tedy potřeboval v průměru o~$24.4$ iterací méně, než gSAT\@.
-
-
-    \begin{table}
-        \caption{Průměrný počet iterací}
-        \centering
-        \begin{tabular}{llr}
-            \toprule
-            Datová sada & gSAT    & probSAT \\
-            \midrule
-            uf20-71R    & $8.0$   & $8.0$   \\
-            uf20-81R    & $13.1$  & $12.2$  \\
-            uf20-91R    & $104.1$ & $76.9$  \\
-            uf50-218R   & $346.0$ & $306.7$ \\
-            uf75-325    & $429.6$ & $404.2$ \\
-            ruf20-91R   & $106.4$ & $81.1$  \\
-            ruf50-218R  & $337.4$ & $299.6$ \\
-            ruf75-320R  & $423.3$ & $393.8$ \\
-            5uf20-420   & $277.8$ & $233.7$ \\
-            5uf50-1050  & $489.3$ & $488.9$ \\
-            7uf20-1760  & $412.6$ & $396.5$ \\
-            \midrule
-            Průměr      & $270.0$ & $245.6$ \\
-            \bottomrule
-        \end{tabular}
-        \label{tab:average_iterations}
-    \end{table}
-
-    Tabulka~\ref{tab:average_fined_iterations} zobrazuje vážený průměrný počet itarcí algoritmu na instancích z datových sad.
-    Vážený průměr je zde počítán pomocí penalizace neúspěšných běhů alogitmu.
-    Za předpokladu, že alogitmus nalezl splňující ohodnocení, do průměru se připočítá pouze počet iterací při daném běhu.
-    Pokud ale algoritmus nedokázal nalézt splňující ohodnocení, do průměru se započítává počet iterací algoritmu společně s penalizací,
-    která činí maximální počet iterací algoritmu přes všechny běhy nad instancemi z~dané datové sady.
-
-    \begin{table}
-        \caption{Vážený průměrný počet iterací}
-        \centering
-        \begin{tabular}{llr}
-            \toprule
-            Datová sada & gSAT    & probSAT \\
-            \midrule
-            uf20-71R    & $8.0$   & $8.0$   \\
-            uf20-81R    & $13.1$  & $12.2$  \\
-            uf20-91R    & $133.7$ & $85.9$  \\
-            uf50-218R   & $597.4$ & $488.3$ \\
-            uf75-325    & $792.4$ & $710.8$ \\
-            ruf20-91R   & $136.4$ & $92.2$  \\
-            ruf50-218R  & $578.9$ & $476.9$ \\
-            ruf75-320R  & $774.7$ & $681.2$ \\
-            5uf20-420   & $439.4$ & $336.0$ \\
-            5uf50-1050  & $966.4$ & $962.1$ \\
-            7uf20-1760  & $754.1$ & $708.3$ \\
-            \midrule
-            Průměr      & $472.3$ & $414.7$ \\
-            \bottomrule
-        \end{tabular}
-        \label{tab:average_fined_iterations}
-    \end{table}
-
-    Dále v rámci experimentálního porovnání byla zkoumána distribuční funkce (její odhad) počtu kroků (iterací) algoritmů.
-    Obrázek~\ref{fig:cdf1} a obrázek~\ref{fig:cdf2} znázorňují pravděpodobnosti, že daný algoritmus skončí do X kroků (${P[x <= X]}$).
-    Distribuční funkce byla počítána pouze z úspešných běhů obou algoritmů.
-
-    Algoritmus probSAT zvítězil v $7$ z $11$ datových sad.
-    Algoritmus gSAT pouze v $4$ z $11$.
-
-    \begin{figure*}[h]
-        \includegraphics[width=\textwidth]{images/gsat_probsat_success_cdf-1}
-        \caption{CDF pro úspěšné běhy algoritmů}
-        \label{fig:cdf1}
-    \end{figure*}
-
-    \begin{figure*}[h]
-        \includegraphics[width=\textwidth]{images/gsat_probsat_success_cdf-2}
-        \caption{CDF pro úspěšné běhy algoritmů}
-        \label{fig:cdf2}
-    \end{figure*}
-
-    Korigovaná distribuční funkce je přenásobená distribuční funkce prametrem $\rho$.
-    Parametr $\rho$ je dynamicky počítán pro každou sadu instancí a reprezentuje podíl počtu úspěšných běhů k počtu všech spuštěných běhů.
-    Korigovaná distribuční funkce již není distribuční funkcí nějakého statistického rozložení, ale i přesto může sloužit jako
-    dobrý indikátor pro porovnání algoritmů.
-    Například lze také sledovat trend dominance, křížení funkcí a porovnání absolutního vítěze na dané datové sadě.
-
-    Algoritmus probSAT zvítězil ve všech datových sadách.
-    Algoritmus gSAT nezvítězil v žádné datové sadě.
-
-    Tento výsledek dobře koreluje s předchozím výsledkem o úspešnosti algoritmů, kde probSAT měl větší úspěšnost než gSAT.
-
-    \begin{figure*}[h]
-        \includegraphics[width=\textwidth]{images/gsat_probsat_revcdf-1}
-        \caption{Korigovaná CDF pro běhy algoritmů}
-        \label{fig:revcdf1}
-    \end{figure*}
-
-    \begin{figure*}[h]
-        \includegraphics[width=\textwidth]{images/gsat_probsat_revcdf-2}
-        \caption{Korigovaná CDF pro běhy algoritmů}
-        \label{fig:revcdf2}
-    \end{figure*}
-
-    Obrázky~\ref{fig:lognormal1}~a~\ref{fig:lognormal2} zobrazují hustotu pravděpodobnosti počtu iterací v úspešných bězích
-    obou algoritmů a pomocí aproximace parametrů lognormalního rozložení také zobrazuje hustotu tohoto rozložení s danými parametry.
-
-    Zde je viditelné, že výsledné počty iterací lze na daných datových sadých považovat za lognormálně rozdělené.
-
-    \begin{figure*}[h]
-        \includegraphics[width=\textwidth]{images/gsat_probsat_pdf_lognormal-1}
-        \caption{Lognormální rozložení a hustota experimentálních dat}
-        \label{fig:lognormal1}
-    \end{figure*}
-
-    \begin{figure*}[h]
-        \includegraphics[width=\textwidth]{images/gsat_probsat_pdf_lognormal-2}
-        \caption{Lognormální rozložení a hustota experimentálních dat}
-        \label{fig:lognormal2}
-    \end{figure*}
-
-%------------------------------------------------
-
-
-    \section{Diskuze}
-
-    Na velkém výběru datových sad byly experimentálně porovnány dva algoritmy (gSAT a probSAT), které oba velmi dobře
-    hledají splnitelné ohocnocení SAT formule.
-    Z~výsledků experimentu vyšlo, že probSAT má větší procentuální úspěšnost nalezení splňujícího ohodnocení se stejným limitem iterací jako gSAT\@.
-    Také bylo pozorováno, že probSAT měl větší pravděpodobnost nalezení splňujícího řešení v daném počtu iterací.
-
-    Pro zajištění lepších výsldků a detailnějšího porovnání je možné použít další (větší) datové sady.
-    
-    V průběhu tvorby experimentu vznikl nástroj na paralelní spouštění velkého množstí datových sat pro programy gSAT a probSAT,
-    který je možné nalézt na adrese \href{https://github.com/zapotocnylubos/ni-kop-compare}{github.com/zapotocnylubos/ni-kop-compare}.
-    Tento repozitář také obsahuje Python Notebook, který byl použit pro analýzu výsledků experimentu a generovaní grafů.
-
+    \section{Závěr}
 
 %----------------------------------------------------------------------------------------
 %	REFERENCE LIST
