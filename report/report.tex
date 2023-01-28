@@ -154,7 +154,7 @@
     Pravděpodobnost přijetí zhoršujícího řešení je závislá na rozdílu hodnot účelové funkce mezi aktuálním řešením a potenciálním novým řešením.
     Zároveň je závislá na aktuální teplotě. Čím větší teplota, tím větší pravděpodobnost, že bude přijato zhoršující řešení.
     Konkrétní implementaci lze vidět na obrázku~\ref{fig:probabilty}.
-    Výsledek tét funkce je následně v hlavním cyklu porovnán s náhodnou hodnotou v internalu od 0 do 1 a pokud tato hodnota
+    Výsledek této funkce je následně v hlavním cyklu porovnán s náhodnou hodnotou v internalu od 0 do 1 a pokud tato hodnota
     převyšuje vygenerovanou náhodnou hodnotu přijímáme zhrošující řešení.
 
     Zlepšující řešení přijímáme vždy.
@@ -177,7 +177,19 @@
         \label{fig:perturb}
     \end{figure}
 
-    Při implementaci a testování heuristy byly použity tyto testovací sady
+    Algoritmus simulovaného ochlazování postupně odhlazuje aktuální teplotu.
+    Na konci každé iterace je v hlavním cyklu volána metoda zobrazená na obrázku~\ref{fig:cool}.
+    Chladící faktor je parametr heuristiky v rozsahu od 0 do 1, který je v následujících sekcích práce experimentálně nastaven
+    na ideální hodnotu.
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=7cm]{images/cool}
+        \caption{Metoda pro chlazení teploty}
+        \label{fig:cool}
+    \end{figure}
+
+    Při implementaci a testování heuristiky byly použity tyto testovací sady
 
     \begin{itemize}
         \item wuf20-71
@@ -220,12 +232,90 @@
     Problém nastával ale v~tom, že na parametru delta je také závislý výpočet pravděpodobnosti přijetí horšího řešení.
     V tomto případě je nutné počítat s~hodnotou delta v~absolutní hodnotě.
     Protože pro nízké teploty je tato delta velmi malá a zapříčinilo to přijetí mnoha zhoršujících řešení.
+    Obrázek~\ref{fig:convergence} zobrazuje graf vývoje aktuálně nejlepšího řešení problému.
+    Na tomto grafu je již vidět trend ochlazování a konvergence k optimálnímu řešení.
 
     \begin{figure}
         \centering
         \includegraphics[width=7cm]{images/no-convergence}
         \caption{Simulované ochlazování bez konvergence}
         \label{fig:no-convergence}
+    \end{figure}
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=7cm]{images/convergence}
+        \caption{Simulované ochlazování s konvergencí}
+        \label{fig:convergence}
+    \end{figure}
+
+    Následně byly testovány jednotlivé prametry heuristiky a závislost jejich nastavení na úspěšnosti nalezení optimálního řešení.
+    Na náasledujících grafech je zobrazane úspěšnost nalezení optimálního řešení.
+    Heuristika nalézá také neoptimální řešení, která jsou blízko optimálnímu, tato chyba zde však porovnána nebyla.
+
+    Základním testem bylo nastavení počáteční teploty.
+    Obrázky~\ref{fig:initial_temperature_71}~a~\ref{fig:initial_temperature_218R} zobrazují úspěšnosti nalezení optimálního řešení
+    na instancích wuf20-71R a wuf50-218R s různými hodnotami počáteční teploty.
+    Testované hodnoty byly z množiny
+
+    \begin{itemize}
+        \item 500
+        \item 1000
+        \item 2000
+        \item 3000
+        \item 4000
+        \item 5000
+        \item 6000
+    \end{itemize}
+
+    V těchto testech se hodnota 5000 jakožto počáteční teplota ukázala být nejvhodnější s~přihlédnutím na úspěšnost
+    v~složitejších instancích a délce výpočetního času.
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=7cm]{images/testing/initial_temperature/static_penalty_m5000/wuf20-71R}
+        \caption{Experiment nastavení počáteční teploty 20-71R}
+        \label{fig:initial_temperature_71}
+    \end{figure}
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=7cm]{images/testing/initial_temperature/static_penalty_m5000/wuf50-218R}
+        \caption{Experiment nastavení počáteční teploty 50-218R}
+        \label{fig:initial_temperature_218R}
+    \end{figure}
+
+    Dále byla testován parametr chladícího faktoru.
+    Tento parametr ovlivňuje rychlost konvergence metody a zároveň společně s nastavením počáteční a koncové teploty
+    určuje počet kroků hlavního cyklu.
+
+    Nastavení tohoto parametru bylo testováno na hodnotách
+
+    \begin{itemize}
+        \item .75
+        \item .8
+        \item .85
+        \item .9
+        \item .95
+        \item .975
+        \item .99
+    \end{itemize}
+
+    Grafy na obrázcích~\ref{fig:cooling_factor_71}~a~\ref{fig:cooling_factor_218R} zobrazují úspěšnost nalezení
+    optimálního řešení v závislosti na nastavení hodnoty chladícího faktoru.
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=7cm]{images/testing/cooling_factor/wuf20-71R}
+        \caption{Experiment nastavení chladícího faktoru 20-71R}
+        \label{fig:cooling_factor_71}
+    \end{figure}
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=7cm]{images/testing/cooling_factor/wuf50-218R}
+        \caption{Experiment nastavení chladícího faktoru 50-218R}
+        \label{fig:cooling_factor_218R}
     \end{figure}
 
 %------------------------------------------------
