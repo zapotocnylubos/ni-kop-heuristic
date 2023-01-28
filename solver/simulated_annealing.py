@@ -18,8 +18,8 @@ class SimulatedAnnealing:
                  initial_temperature: int = 5000,
                  final_temperature: int = 1,
                  num_iterations_per_temperature: int = 10,
-                 perturbation_flips: int = 2,
-                 cooling_factor: float = .985,
+                 perturbation_flips: int = 1,
+                 cooling_factor: float = .975,
                  penalty: int = -5000):
         self.mwcnf = mwcnf
         self.initial_temperature = initial_temperature
