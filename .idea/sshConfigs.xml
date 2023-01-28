@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="SshConfigs">
-    <configs>
-      <sshConfig host="ni-kop.fit.cvut.cz" id="2f02bd80-2260-4d10-a854-0f050e7fedf7" keyPath="$USER_HOME$/.ssh/id_ed25519" port="22" nameFormat="DESCRIPTIVE" username="zapotlub" useOpenSSHConfig="true" />
-    </configs>
-  </component>
-</project>
