@@ -111,9 +111,9 @@
     Tedy pro tento problém neexistuje (za předpokladu P $\neq$ NP) efektivní algoritmus, který by tento problém řešil v polynomiálním čase.
     Jelikož se jedná o NP-těžký (NP-úplné problémy jsou podmnožinou NP-těžkých) problém, lze na tento problém převést instance všech problému ze tříd P a NP.
 
-    MaxWeightedSAT označuje optimalizační verzi hledání SAT ohodnocení zároveň s kritériem pro maximalizace součtu
+    MaxWeightedSAT označuje optimalizační verzi hledání SAT ohodnocení zároveň s~kritériem pro maximalizaci součtu
     vah proměnných ohodnocených 1 (True).
-    Problém je tedy rozšířen o atributy $w(x_i)$ pro všechny proměnné $w_i$ reprezentující váhové ohodnocení jednotlivých
+    Problém je tedy rozšířen o atributy $w(x_i)$ pro všechny proměnné $x_i$ reprezentující váhové ohodnocení jednotlivých
     proměnných.
 
     Tato práce se zaměřuje na řešení výše zmíněného NP-těžkého optimzačního problému pomocí heuristiky simulovaného ochlazování.
@@ -124,14 +124,16 @@
     Stavový prostor je tedy vektor (pole) boolevských ohodnocení (True/False) jednotlivých proměnných.
     Operátorem přechodu do nového stavu je logická změna jednoho náhodného bitu v tomto vektoru.
 
-    Algoritmus přechází do zlepšíjících stavů a s určitou pravděpodobností přechází také do zhrošujících stavů.
-    Tímto postupem se heuristika snaží zamezit uvízní v lokálních extrémech.
+    Algoritmus přechází do zlepšujících stavů a s určitou pravděpodobností přechází také do zhrošujících stavů.
+    Tímto postupem se heuristika snaží zamezit uvíznutí v lokálních extrémech.
 
     Heuristika začíná s vysokou teplotou, která ovlivňuje mimo jiné také pravděpodobnost přijetí nezlepšujících stavů.
     To vede k velkému prozkoumání stavového prostoru v prvních krocích algoirtmu.
     Každý krok algorimu sníží tuto teplotu o násobek chladícího faktoru (lineárně).
-    Tímto chlazením se také snižuje pravděpodobnost přijetí zhrošujícího stavu a heuristika tímto konverguje k nalezení
+    Tímto chlazením se také snižuje pravděpodobnost přijetí zhrošujícího stavu a~heuristika tímto konverguje k nalezení
     optimálního řešení.
+
+    Podrobný popis datových sad lze najít na stránkách kurzu NI-KOP~ČVUT~FIT~\cite{coursesData}.
 
 %------------------------------------------------
 
@@ -166,7 +168,7 @@
         \label{fig:probabilty}
     \end{figure}
 
-    Průhod stavovým prostorem zajišťuje funkce \emph{perturb\_solution} (obrázek~\ref{fig:perturb}) která flipuje náhodné bity v aktuálním ohodnocení.
+    Průchod stavovým prostorem zajišťuje funkce \emph{perturb\_solution} (obrázek~\ref{fig:perturb}) která flipuje náhodné bity v aktuálním ohodnocení.
     Tímto se můžeme dostat k méně optimálnímu řešení než které aktuálně máme, ale zajišťujeme si tím větší průchod
     možných konfigurací a mitigujeme uváznutí v lokálních extrémech.
 
@@ -203,7 +205,7 @@
         \item wuf100-430
     \end{itemize}
 
-    Parametry heuristy jsou následující
+    Parametry heuristiky jsou následující
 
     \begin{itemize}
         \item \emph{initial\_temperature} - počáteční teplota
@@ -219,7 +221,7 @@
     \section{White box testování}
 
     Jeden z prvních testů celého program odhalil závažnou chybu v programu.
-    Chyba byla odhalena až po detailním výpisu grafu aktuálně nejlepších řešení heruistky.
+    Chyba byla odhalena až po detailním výpisu grafu aktuálně nejlepších řešení heruistiky.
     Teorie simulovaného ochlazování říka, že se snižující teplotou by se mělo řešení ustálit a zlepšovat.
     To na grafu zobrazeném na obrázku~\ref{fig:no-convergence} ale vůbec není patrné.
 
@@ -249,8 +251,8 @@
         \label{fig:convergence}
     \end{figure}
 
-    Následně byly testovány jednotlivé prametry heuristiky a závislost jejich nastavení na úspěšnosti nalezení optimálního řešení.
-    Na náasledujících grafech je zobrazane úspěšnost nalezení optimálního řešení.
+    Následně byly testovány jednotlivé parametry heuristiky a závislost jejich nastavení na úspěšnosti nalezení optimálního řešení.
+    Na následujících grafech je zobrazana úspěšnost nalezení optimálního řešení.
     Heuristika nalézá také neoptimální řešení, která jsou blízko optimálnímu, tato chyba zde však porovnána nebyla.
 
     Základním testem bylo nastavení počáteční teploty.
@@ -285,7 +287,7 @@
         \label{fig:initial_temperature_218R}
     \end{figure}
 
-    Dále byla testován parametr chladícího faktoru.
+    Dále byl testován parametr chladícího faktoru.
     Tento parametr ovlivňuje rychlost konvergence metody a zároveň společně s nastavením počáteční a koncové teploty
     určuje počet kroků hlavního cyklu.
 
@@ -320,13 +322,13 @@
 
     Experiment navrhuje jako nejlepší hodnotu .99, výsledná hodnota ale byla zvolena .975 z důvodu rychlejší konvergence - rychlejšího běhu algoritmu.
 
-    Algoritmus obsahuje účelovou funkci, která nabývá hodnoty vah aktuálního ohodnocení, ale zároveň penalizuje nesplnitelné klauzule.
+    Algoritmus obsahuje účelovou funkci, která nabývá hodnoty vah aktuálního ohodnocení, ale zároveň penalizuje nesplněné klauzule.
     Tímto postupem je zajištěna maximalizace vah řešení společně se snahou nalézt ohodnocení, které splňuje zadanou formuli.
-    Zároveň je zde ale volnost, které umožuje heuristice některé klauzule nesplnit, pokud je většina ostatních splnitelná.
+    Zároveň je zde ale volnost, která umožuje heuristice některé klauzule nesplnit, pokud je splněná většina ostatních.
 
     Po několika iterací a manuálním testování úspěšnosti a efektivity algoritmu byla zvolena tato výpočetní formule (obrázek~\ref{fig:objective}),
     která úměrně penalizuje nesplněné klauzuje skalárním násobkem (penalizace).
-    Tento skalární násobek je také parametr heuristy a pokud je vyplněn 0, heuristika si automaticky vhodnou penalizaci
+    Tento skalární násobek je také parametr heuristiky a pokud je vyplněn 0, heuristika si automaticky vhodnou penalizaci
     dopočte z vektoru vah jednotlivých proměnných (obrázek~\ref{fig:auto_penalty}).
 
     \begin{figure}
@@ -356,7 +358,7 @@
     \end{itemize}
 
     Graf na obrázcích~\ref{fig:penalty_71}~a~\ref{fig:penalty_218} zobrazují procentuální úspěšnost nalezení optimálního řešení
-    v~zácislosti na penalizačním skaláru.
+    v~závislosti na penalizačním skaláru.
 
     \begin{figure}
         \centering
@@ -380,19 +382,89 @@
 
 %------------------------------------------------
 
-
     \section{Black box testování}
+
+    Rámec black box testování již měl zafixované parametry heuristiky, které v minlé sekci vyšli jako nejlepší.
+    Jedná se o počáteční teplotu 5000, odhlazující faktor 0.975 a fixní penalizaci -5000.
+
+    V rámci této sekce byly zvoleny dvě hlavní skupiny instancí, na kterých bude úspěšnost heuristiky demonstrována
+
+    \begin{itemize}
+        \item wuf-20-71R
+        \item wuf-50-218R
+    \end{itemize}
+
+    V rámci těchto skupin existují podskupiny M, N, Q a R, kde každá obsahuje 100 instancí.
+    Jelikož heuristika využíva mnoho náhodných prvků, každá instance byla spuštěna 10.
+    Celkově se tedy pro tyto dvě skupiny spustilo 8000 běhu algoritmu.
+
+    Histogram na obrázku~\ref{fig:bar_weight_71} vyobrazuje procentuální odchylku váhy nalezeného ohodnocení
+    od optimální váhy.
+    V případě, že je odchylka menší než 1.0, heuristika nedokázala najít to nejlepší splňující ohodnocení.
+    Pokud byla odchylka ostře větší než 1.0 znamená to, že heuristika nalezla ohodnocení s větším součtem vah.
+    Jelikož máme data o optimálním řešení, říká nám to, že v těchto případech penalizace nesplněných klauzilí nebyla dostatečná
+    a~heuristika zvolila jako výhodnější stavy s větším součtem vah.
+
+    Pokud je odchylka přesně 1.0, tak heuristika našla optimální ohodnocení proměnných s největším váhovým součtem.
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=7cm]{images/testing/bar/weight/wuf20-71R}
+        \caption{Experiment nalezení chyby v maximální váze 20-71R}
+        \label{fig:bar_weight_71}
+    \end{figure}
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=7cm]{images/testing/bar/weight/wuf50-218R}
+        \caption{Experiment nalezení chyby v maximální váze 50-218R}
+        \label{fig:bar_weight_218}
+    \end{figure}
+
+    V histogramech na obrázcích~\ref{fig:bar_sat_71}~a~\ref{fig:bar_sat_218} lze nahlédnout na procentuální počet splněných klauzulí.
+    Na těchto grafech je vidět, že na instacích ze sady 20-71R dokázala heuristika téměř vždy nalézt splnitelné ohodnocení.
+    Instance 50-218R mají o pár procent menší úspěšnost, hlavně varianta datové sady R.
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=7cm]{images/testing/bar/sat/wuf20-71R}
+        \caption{Experiment nalezení chyby v maximální váze 20-71R}
+        \label{fig:bar_sat_71}
+    \end{figure}
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=7cm]{images/testing/bar/sat/wuf50-218R}
+        \caption{Experiment nalezení chyby v maximální váze 50-218R}
+        \label{fig:bar_sat_218}
+    \end{figure}
+
 
 %------------------------------------------------
 
 
     \section{Závěr}
 
+    V této práci vznikla jednoduchá a lehce přepoužitelná knihovna pro souštění heuristiky simulovaného ochlazování na řešení
+    NP-těžkého problém váženého SAT ohodnocení. Heuristika splňuje zadání práce a relativně úspěšně řeší i složitější varianty úloh.
+
+    Implementací autor narazil na několik zajímavých poznatků a možných chyb, které při implementaci mohou nastat a opravil
+    tyto chyby na základně experimentálního pozorování výsledků heuristiky.
+
+    Zároveň proběhlo několik experimentálních pokusů pro určení ideálních parametrů heuristky, které následně byly v black-box
+    fázi pozorovány za přínosné.
+
+    Algoritmus do budoucích použití je vhodný spíše pro menší instance problémů, jelikož na instancích z sady 50-218R
+    měl algoritmus úspěšnost nalezení optimálního řešení pod 50\%.
+
+    Jelikož se jedná o randomizovaný algoritmus bylo provedeno několik běhů na stejných instancích a následně byly tyto výsledky
+    započteny do finálních výsledků.
+
 %----------------------------------------------------------------------------------------
 %	REFERENCE LIST
 %----------------------------------------------------------------------------------------
 
-    \clearpage
+    %\clearpage
 
     \bibliography{literature}
     \bibliographystyle{plain}
